@@ -1,0 +1,180 @@
+import { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { 
+  Bars3Icon, 
+  XMarkIcon, 
+  UserCircleIcon, 
+  ArrowRightOnRectangleIcon 
+} from '@heroicons/react/24/outline';
+import { useAuth } from '../contexts/AuthContext';
+
+const Navbar = ({ isMobileMenuOpen, toggleMobileMenu }) => {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  
+  const navLinks = [
+    { name: 'Home', to: '/' },
+    { name: 'How It Works', to: '/#how-it-works' },
+    { name: 'Features', to: '/#features' },
+    { name: 'Pricing', to: '/#pricing' },
+  ];
+  
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+  
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+  
+  return (
+    <header 
+      className={`fixed w-full z-50 transition-all duration-300 ${
+        isScrolled ? 'bg-white shadow-md py-2' : 'bg-transparent py-4'
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex-shrink-0">
+            <Link to="/" className="flex items-center">
+              <span className="text-2xl font-serif font-bold text-primary">
+                RI Connect
+              </span>
+            </Link>
+          </div>
+          
+          <nav className="hidden md:flex items-center space-x-8">
+            {navLinks.map((link) => (
+              <Link
+                key={link.name}
+                to={link.to}
+                className={`text-sm font-medium ${
+                  location.pathname === link.to
+                    ? 'text-primary'
+                    : 'text-gray-700 hover:text-primary'
+                }`}
+              >
+                {link.name}
+              </Link>
+            ))}
+          </nav>
+          
+          <div className="hidden md:flex items-center space-x-4">
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <Link
+                  to={`/${user.role}/dashboard`}
+                  className="flex items-center text-sm font-medium text-gray-700 hover:text-primary"
+                >
+                  <UserCircleIcon className="h-5 w-5 mr-1" />
+                  Dashboard
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center text-sm font-medium text-gray-700 hover:text-red-600"
+                >
+                  <ArrowRightOnRectangleIcon className="h-5 w-5 mr-1" />
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="text-sm font-medium text-gray-700 hover:text-primary"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/signup"
+                  className="bg-primary text-white px-4 py-2 rounded-md hover:bg-teal-700 transition-colors"
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
+          </div>
+          
+          <div className="md:hidden flex items-center space-x-4">
+            {user ? (
+              <div className="flex items-center">
+                <Link
+                  to={`/${user.role}/dashboard`}
+                  className="p-2 text-gray-700 hover:text-primary"
+                  aria-label="Dashboard"
+                >
+                  <UserCircleIcon className="h-6 w-6" />
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="p-2 text-gray-700 hover:text-red-600"
+                  aria-label="Sign out"
+                >
+                  <ArrowRightOnRectangleIcon className="h-6 w-6" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Link
+                  to="/login"
+                  className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-primary"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/signup"
+                  className="px-3 py-1.5 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            )}
+            <button
+              onClick={toggleMobileMenu}
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-primary hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
+              aria-expanded={isMobileMenuOpen}
+              aria-label="Toggle navigation"
+            >
+              <span className="sr-only">Open main menu</span>
+              {isMobileMenuOpen ? (
+                <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
+              ) : (
+                <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      {/* Mobile menu */}
+      <div
+        className={`md:hidden transition-all duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
+        } overflow-hidden bg-white`}
+      >
+        <div className="pt-2 pb-3 space-y-1 px-4">
+          {navLinks.map((link) => (
+            <Link
+              key={`mobile-${link.name}`}
+              to={link.to}
+              className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary hover:bg-gray-50 rounded-md"
+              onClick={toggleMobileMenu}
+            >
+              {link.name}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export default Navbar;

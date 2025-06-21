@@ -1,0 +1,17 @@
+import { motion, useInView, AnimatePresence, useAnimation } from 'framer-motion';
+import { useRef, useState, useEffect } from 'react';
+import { 
+  BoltIcon, 
+  ChartBarIcon, 
+  UserGroupIcon, 
+  ClockIcon, 
+  ShieldCheckIcon, 
+  CheckCircleIcon,
+  ArrowRightIcon,
+  ArrowPathIcon,
+  PlayIcon,
+  PauseIcon,
+  XMarkIcon
+} from '@heroicons/react/24/outline';
+
+// Rest of your Features.jsx file content...

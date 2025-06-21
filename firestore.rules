@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  // Helper functions
+  function isSignedIn() {
+    return request.auth != null;
+  }
+  
+  function isOwner(userId) {
+    return isSignedIn() && request.auth.uid == userId;
+  }
+  
+  function hasRole(role) {
+    return isSignedIn() && 
+           request.auth != null &&
+           resource != null && 
+           resource.data.role == role;
+  }
+  
+  function isValidUserData() {
+    let data = request.resource.data;
+    let requiredFields = ['email', 'displayName', 'role'];
+    
+    // Check all required fields exist
+    return (
+      requiredFields.every(field => field in data) &&
+      // Validate email format
+      data.email.matches('^[^@]+@[^@]+\\.[^@]+$') &&
+      // Validate role
+      (['interviewer', 'interviewee'].includes(data.role)) &&
+      // Ensure createdBy matches the user ID or allow if not set (for new users)
+      (!('createdBy' in data) || data.createdBy == request.auth.uid)
+    );
+  }
+  
+  match /databases/{database}/documents {
+    // ========== Users Collection ==========
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if isOwner(userId);
+      
+      // Users can create/update their own profile with valid data
+      allow create: if isOwner(userId) && 
+                    isValidUserData() &&
+                    !exists(/databases/$(database)/documents/users/$(userId));
+                    
+      allow update: if isOwner(userId) && 
+                    isValidUserData() &&
+                    request.resource.data.role == resource.data.role; // Prevent role changes
+      
+      // Admins can read any user profile (uncomment if you have admin role)
+      // allow read: if hasRole('admin');
+    }
+    
+    // ========== Feedbacks Collection ==========
+    match /feedbacks/{feedbackId} {
+      // Users can create their own feedback
+      allow create: if isSignedIn() && 
+                   request.auth.uid == request.resource.data.userId &&
+                   request.resource.data.rating >= 1 &&
+                   request.resource.data.rating <= 5 &&
+                   request.resource.data.feedback is string &&
+                   request.resource.data.feedback.size() > 0;
+      
+      // Users can read their own feedback
+      allow read: if isSignedIn() && 
+                 (request.auth.uid == resource.data.userId || hasRole('admin'));
+      
+      // Users can update their own feedback within 1 hour of creation
+      allow update: if isSignedIn() && 
+                  request.auth.uid == resource.data.userId &&
+                  (request.time < resource.data.createdAt + duration.value(1, 'h'));
+    }
+    
+    // ========== Interviews Collection ==========
+    match /interviews/{interviewId} {
+      // Allow read if user is the interviewer or interviewee
+      allow read: if isSignedIn() && 
+                  (resource.data.interviewerId == request.auth.uid || 
+                   resource.data.intervieweeId == request.auth.uid);
+      
+      // Allow create with valid data
+      allow create: if isSignedIn() && 
+                   request.resource.data.interviewerId == request.auth.uid &&
+                   'intervieweeId' in request.resource.data &&
+                   'scheduledTime' in request.resource.data;
+      
+      // Allow update if user is the interviewer and only certain fields are modified
+      allow update: if isSignedIn() && 
+                   request.resource.data.interviewerId == request.auth.uid &&
+                   // Only allow updating status, feedback, and notes
+                   (request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                     'status', 'feedback', 'notes', 'updatedAt'
+                   ]) || 
+                   // Or schedule updates if interview is not yet started
+                   (resource.data.status == 'scheduled' && 
+                    request.resource.data.status == 'scheduled'));
+    }
+    
+    // ========== Default Deny ==========
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
